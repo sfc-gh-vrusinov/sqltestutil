@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	docker_container "github.com/docker/docker/api/types/container"
-	docker_image "github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 )
@@ -72,8 +71,8 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 		panic(err)
 	}
 	defer cli.Close()
-	image := "postgres:" + version
-	_, _, err = cli.ImageInspectWithRaw(ctx, image)
+	img := "postgres:" + version
+	_, _, err = cli.ImageInspectWithRaw(ctx, img)
 	if err != nil {
 		_, notFound := err.(interface {
 			NotFound()
@@ -81,7 +80,7 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 		if !notFound {
 			return nil, err
 		}
-		pullReader, err := cli.ImagePull(ctx, image, docker_image.PullOptions{})
+		pullReader, err := cli.ImagePull(ctx, img, image.PullOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +100,7 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 		return nil, err
 	}
 	createResp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: image,
+		Image: img,
 		Env: []string{
 			"POSTGRES_DB=pgtest",
 			"POSTGRES_PASSWORD=" + password,
@@ -125,14 +124,14 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 	}
 	defer func() {
 		if err != nil {
-			removeErr := cli.ContainerRemove(ctx, createResp.ID, docker_container.RemoveOptions{})
+			removeErr := cli.ContainerRemove(ctx, createResp.ID, container.RemoveOptions{})
 			if removeErr != nil {
 				fmt.Println("error removing container:", removeErr)
 				return
 			}
 		}
 	}()
-	err = cli.ContainerStart(ctx, createResp.ID, docker_container.StartOptions{})
+	err = cli.ContainerStart(ctx, createResp.ID, container.StartOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +186,7 @@ func (c *PostgresContainer) Shutdown(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = cli.ContainerRemove(ctx, c.id, docker_container.RemoveOptions{})
+	err = cli.ContainerRemove(ctx, c.id, container.RemoveOptions{})
 	if err != nil {
 		return err
 	}
